@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -44,52 +44,32 @@ pub struct VersionInfo {
     pub asset_index: AssetIndex,
     /// The version ID of the assets
     pub assets: String,
-    /// Game downloads of the version
-    pub downloads: HashMap<DownloadType, Download>,
     /// The version ID of the version
     pub id: String,
-
-    /// The Java version this version supports
-    pub java_version: Option<JavaVersion>,
     /// Libraries that the version depends on
     pub libraries: Vec<Library>,
     /// The classpath to the main class to launch the game
     pub main_class: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// (Legacy) Arguments passed to the game
-    pub minecraft_arguments: Option<String>,
-    /// The minimum version of the Minecraft Launcher that can run this version of the game
-    pub minimum_launcher_version: u32,
-    /// The time that the version was released
-    pub release_time: DateTime<Utc>,
-    /// The latest time a file in this version was updated
-    pub time: DateTime<Utc>,
     #[serde(rename = "type")]
     /// The type of version
     pub type_: VersionType,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// (Forge-only)
-    pub data: Option<HashMap<String, SidedDataEntry>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// (Forge-only) The list of processors to run after downloading the files
-    pub processors: Option<Vec<Processor>>,
-}
-/// A data variable entry that depends on the side of the installation
-#[derive(Deserialize, Debug)]
-pub struct SidedDataEntry {
-    /// The value on the client
-    pub client: String,
-    /// The value on the server
-    pub server: String,
 }
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-/// Information about the java version the game needs
-pub struct JavaVersion {
-    /// The component needed for the Java installation
-    pub component: String,
-    /// The major Java version number
-    pub major_version: u32,
+/// Information about a version
+pub struct PartialVersionInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Arguments passed to the game or JVM
+    pub arguments: Option<HashMap<ArgumentType, Vec<Argument>>>,
+    /// The version ID of the version
+    pub id: String,
+    /// Libraries that the version depends on
+    pub libraries: Vec<Library>,
+    /// The classpath to the main class to launch the game
+    pub main_class: String,
+    #[serde(rename = "type")]
+    /// The type of version
+    pub type_: VersionType,
 }
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -103,13 +83,6 @@ pub enum VersionType {
     OldAlpha,
     /// Early versions of the game
     OldBeta,
-}
-#[derive(Deserialize, Debug, Clone)]
-/// Information delegating the extraction of the library
-pub struct LibraryExtract {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Files/Folders to be excluded from the extraction of the library
-    pub exclude: Option<Vec<String>>,
 }
 #[derive(Deserialize, Debug, Clone)]
 /// A list of files that should be downloaded for libraries
@@ -148,17 +121,6 @@ pub struct Library {
     /// The files the library has
     pub downloads: Option<LibraryDownloads>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// Rules of the extraction of the file
-    pub extract: Option<LibraryExtract>,
-    /// The maven name of the library. The format is `groupId:artifactId:version`
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// The URL to the repository where the library can be downloaded
-    pub url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Native files that the library relies on
-    pub natives: Option<HashMap<Os, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     /// Rules deciding whether the library should be downloaded or not
     pub rules: Option<Vec<Rule>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,22 +133,6 @@ pub struct Library {
     /// Whether the library should be downloaded
     pub downloadable: bool,
 }
-#[derive(Deserialize, Debug, Eq, PartialEq, Hash)]
-#[serde(rename_all = "snake_case")]
-/// The type of download
-pub enum DownloadType {
-    /// The download is for the game client
-    Client,
-    /// The download is mappings for the game
-    ClientMappings,
-    /// The download is for the game server
-    Server,
-    /// The download is mappings for the game server
-    ServerMappings,
-    /// The download is for the windows server
-    WindowsServer,
-}
-
 #[derive(Deserialize, Debug, Eq, PartialEq, Hash, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 /// The type of argument
@@ -298,48 +244,11 @@ pub enum RuleAction {
     /// The rule's status disallows something to be done
     Disallow,
 }
-#[derive(Deserialize, Debug)]
-/// Download information of a file
-pub struct Download {
-    /// The SHA1 hash of the file
-    pub sha1: String,
-    /// The size of the file
-    pub size: u32,
-    /// The URL where the file can be downloaded
-    pub url: String,
-}
-/// A processor to be ran after downloading the files
-#[derive(Deserialize, Debug)]
-pub struct Processor {
-    /// Maven coordinates for the JAR library of this processor.
-    pub jar: String,
-    /// Maven coordinates for all the libraries that must be included in classpath when running this processor.
-    pub classpath: Vec<String>,
-    /// Arguments for this processor.
-    pub args: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Represents a map of outputs. Keys and values can be data values
-    pub outputs: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Which sides this processor shall be ran on.
-    /// Valid values: client, server, extract
-    pub sides: Option<Vec<String>>,
-}
 #[derive(Deserialize, Debug, Clone)]
 /// Data of all game versions of Minecraft
 pub struct VersionManifest {
-    /// A struct containing the latest snapshot and release of the game
-    pub latest: LatestVersion,
     /// A list of game versions of Minecraft
     pub versions: Vec<Version>,
-}
-#[derive(Deserialize, Debug, Clone)]
-/// The latest snapshot and release of the game
-pub struct LatestVersion {
-    /// The version id of the latest release
-    pub release: String,
-    /// The version id of the latest snapshot
-    pub snapshot: String,
 }
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -352,15 +261,6 @@ pub struct Version {
     pub type_: VersionType,
     /// A link to additional information about the version
     pub url: String,
-    /// The latest time a file in this version was updated
-    pub time: DateTime<Utc>,
-    /// The time this version was released
-    pub release_time: DateTime<Utc>,
     /// The SHA1 hash of the additional information about the version
     pub sha1: String,
-    /// Whether the version supports the latest player safety features
-    pub compliance_level: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// (Modrinth Provided) The SHA1 hash of the original unmodified Minecraft versions JSON
-    pub original_sha1: Option<String>,
 }
