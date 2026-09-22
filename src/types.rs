@@ -1,5 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
-use std::collections::HashMap;
+use std::{assert_matches, collections::HashMap};
 
 use serde::Deserialize;
 
@@ -87,9 +86,9 @@ pub enum VersionType {
 #[derive(Deserialize, Debug, Clone)]
 /// A list of files that should be downloaded for libraries
 pub struct LibraryDownloads {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // #[serde(skip_serializing_if = "Option::is_none")]
     /// The primary library artifact
-    pub artifact: Option<LibraryDownload>,
+    pub artifact: LibraryDownload,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Conditional files that may be needed to be downloaded alongside the library
     /// The HashMap key specifies a classifier as additional information for downloading files
@@ -100,7 +99,7 @@ pub struct LibraryDownloads {
 pub struct LibraryDownload {
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The path that the library should be saved to
-    pub path: Option<String>,
+    pub path: String,
     /// The SHA1 hash of the library
     pub sha1: String,
     /// The size of the library
@@ -117,9 +116,9 @@ fn default_downloadable() -> bool {
 #[derive(Deserialize, Debug, Clone)]
 /// A library which the game relies on to run
 pub struct Library {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // #[serde(skip_serializing_if = "Option::is_none")]
     /// The files the library has
-    pub downloads: Option<LibraryDownloads>,
+    pub downloads: LibraryDownloads,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Rules deciding whether the library should be downloaded or not
     pub rules: Option<Vec<Rule>>,
@@ -159,6 +158,24 @@ pub enum Argument {
         value: ArgumentValue,
     },
 }
+impl Argument {
+    pub fn into_args(self, state: &Rule) -> Vec<String> {
+        match self {
+            Argument::Ruled { rules, value }
+                if rules
+                    .as_ref()
+                    .is_none_or(|r| r.iter().any(|r| r.valid_with_state(state))) =>
+            {
+                match value {
+                    ArgumentValue::Single(s) => vec![s],
+                    ArgumentValue::Many(s) => s,
+                }
+            }
+            Argument::Normal(s) => vec![s],
+            Argument::Ruled { .. } => Vec::new(),
+        }
+    }
+}
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 /// A container for an argument or multiple arguments
@@ -180,6 +197,21 @@ pub struct Rule {
     /// The feature rule
     pub features: Option<FeatureRule>,
 }
+impl Rule {
+    pub fn valid_with_state(&self, state: &Self) -> bool {
+        assert_matches!(self.action, RuleAction::Allow);
+        self.os
+            .as_ref()
+            .zip(state.os.as_ref())
+            .is_none_or(|(a, b)| a.valid_with_state(b))
+            && self
+                .features
+                .as_ref()
+                .zip(state.features.as_ref())
+                .is_none_or(|(a, b)| a.valid_with_state(b))
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 /// A rule which depends on what OS the user is on
 pub struct OsRule {
@@ -192,6 +224,24 @@ pub struct OsRule {
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The architecture of the OS
     pub arch: Option<String>,
+}
+impl OsRule {
+    fn valid_with_state(&self, state: &Self) -> bool {
+        self.name
+            .as_ref()
+            .zip(state.name.as_ref())
+            .is_none_or(|(a, b)| a == b)
+            && self
+                .version
+                .as_ref()
+                .zip(state.version.as_ref())
+                .is_none_or(|(a, b)| a == b)
+            && self
+                .arch
+                .as_ref()
+                .zip(state.arch.as_ref())
+                .is_none_or(|(a, b)| a == b)
+    }
 }
 #[derive(Deserialize, Debug, Clone)]
 /// A rule which depends on the toggled features of the launcher
@@ -213,6 +263,22 @@ pub struct FeatureRule {
     pub is_quick_play_multiplayer: Option<bool>,
     ///  Whether the instance is being launched to a realms world
     pub is_quick_play_realms: Option<bool>,
+}
+impl FeatureRule {
+    fn valid_with_state(&self, state: &Self) -> bool {
+        (self.is_demo_user.is_none() || self.is_demo_user == state.is_demo_user)
+            && (self.is_demo_user.is_none() || self.is_demo_user == state.is_demo_user)
+            && (self.has_custom_resolution.is_none()
+                || self.has_custom_resolution == state.has_custom_resolution)
+            && (self.has_quick_plays_support.is_none()
+                || self.has_quick_plays_support == state.has_quick_plays_support)
+            && (self.is_quick_play_singleplayer.is_none()
+                || self.is_quick_play_singleplayer == state.is_quick_play_singleplayer)
+            && (self.is_quick_play_multiplayer.is_none()
+                || self.is_quick_play_multiplayer == state.is_quick_play_multiplayer)
+            && (self.is_quick_play_realms.is_none()
+                || self.is_quick_play_realms == state.is_quick_play_realms)
+    }
 }
 #[derive(Deserialize, Debug, Eq, PartialEq, Hash, Clone)]
 #[serde(rename_all = "kebab-case")]

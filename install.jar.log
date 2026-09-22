@@ -1,11 +1,11 @@
 JVM info: Arch Linux - 27 - 27
 java.net.preferIPv4Stack=true
-Current Time: 21/09/2026 23:52:50
-Host: maven.neoforged.net [195.181.172.2, 195.181.172.5]
-Host: libraries.minecraft.net [150.171.109.36]
-Host: launchermeta.mojang.com [150.171.109.34]
-Host: piston-meta.mojang.com [150.171.109.34]
-Host: sessionserver.mojang.com [150.171.109.35]
+Current Time: 22/09/2026 13:53:20
+Host: maven.neoforged.net [195.181.172.2, 195.181.172.6]
+Host: libraries.minecraft.net [150.171.109.107]
+Host: launchermeta.mojang.com [150.171.109.107]
+Host: piston-meta.mojang.com [150.171.109.100]
+Host: sessionserver.mojang.com [150.171.109.100]
 Found java version 27
 Target Directory: ./instance
 Extracting json
@@ -157,7 +157,7 @@ Downloading library from https://maven.neoforged.net/releases/net/neoforged/inst
 Considering library net.neoforged:neoforge:26.3.0.7-beta:universal
 Downloading library from https://maven.neoforged.net/releases/net/neoforged/neoforge/26.3.0.7-beta/neoforge-26.3.0.7-beta-universal.jar
 	Download completed: Checksum validated.
-Created Temporary Directory: /tmp/neoforge_installer533509813544217969
+Created Temporary Directory: /tmp/neoforge_installer2447077225064667321
   Extracting: /data/client.lzma
 Building Processor
 ===============================================================================
@@ -166,14 +166,14 @@ Processor: net.neoforged.installertools:installertools -> PROCESS_MINECRAFT_JAR
   Classpath:
     /home/jannick/projects/launcher/./instance/libraries/net/neoforged/installertools/installertools/4.0.17/installertools-4.0.17-fatjar.jar
     /home/jannick/projects/launcher/./instance/libraries/net/neoforged/installertools/installertools/4.0.17/installertools-4.0.17-fatjar.jar
-  Args: --task, PROCESS_MINECRAFT_JAR, --no-mod-manifest, --input, /home/jannick/projects/launcher/./instance/versions/26.3/26.3.jar, --output, /home/jannick/projects/launcher/./instance/libraries/net/neoforged/minecraft-client-patched/26.3.0.7-beta/minecraft-client-patched-26.3.0.7-beta.jar, --extract-libraries-to, /home/jannick/projects/launcher/./instance/libraries/, --apply-patches, /tmp/neoforge_installer533509813544217969/data/client.lzma
+  Args: --task, PROCESS_MINECRAFT_JAR, --no-mod-manifest, --input, /home/jannick/projects/launcher/./instance/versions/26.3/26.3.jar, --output, /home/jannick/projects/launcher/./instance/libraries/net/neoforged/minecraft-client-patched/26.3.0.7-beta/minecraft-client-patched-26.3.0.7-beta.jar, --extract-libraries-to, /home/jannick/projects/launcher/./instance/libraries/, --apply-patches, /tmp/neoforge_installer2447077225064667321/data/client.lzma
 Task: PROCESS_MINECRAFT_JAR
 Using common thread-pool with parallelism 19
-load patch bundle [699ms]
-load input zip [1035ms]
-applying patches [350ms]
-write output file [3212ms]
-overall work [4616ms]
+load patch bundle [325ms]
+load input zip [483ms]
+applying patches [155ms]
+write output file [1500ms]
+overall work [2146ms]
 Injecting profile
 Successfully installed client into launcher.
 You can delete this installer file now if you wish
