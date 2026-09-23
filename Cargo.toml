@@ -12,3 +12,4 @@ tokio-util = { version = "*", features = ["io"] }
 anyhow = "*"
 futures-util = "*"
 chrono = { version = "*", features = ["serde"] }
+either = "*"

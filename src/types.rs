@@ -38,7 +38,7 @@ pub struct AssetsIndex {
 pub struct VersionInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Arguments passed to the game or JVM
-    pub arguments: Option<HashMap<ArgumentType, Vec<Argument>>>,
+    pub arguments: HashMap<ArgumentType, Vec<Argument>>,
     /// Assets for the game
     pub asset_index: AssetIndex,
     /// The version ID of the assets
@@ -52,6 +52,46 @@ pub struct VersionInfo {
     #[serde(rename = "type")]
     /// The type of version
     pub type_: VersionType,
+    #[serde(skip)]
+    pub child_libraries: Vec<Library>,
+}
+impl VersionInfo {
+    pub fn merge(mut self, child: PartialVersionInfo) -> Self {
+        self.main_class = child.main_class;
+        self.type_ = child.type_;
+        self.child_libraries.extend(child.libraries);
+        for (t, v) in child.arguments {
+            self.arguments.entry(t).or_default().extend(v);
+        }
+        self.id = child.id;
+        self
+    }
+    pub fn arguments(mut self, state: &Rule, vars: &HashMap<&'static str, String>) -> Vec<String> {
+        let jvm = self.arguments.remove(&ArgumentType::Jvm).unwrap();
+        let game = self.arguments.remove(&ArgumentType::Game).unwrap();
+        let user_jvm = self
+            .arguments
+            .remove(&ArgumentType::DefaultUserJvm)
+            .unwrap();
+        let jvm = Self::parse_arguments(jvm, state, vars);
+        let game = Self::parse_arguments(game, state, vars);
+        let user_jvm = Self::parse_arguments(user_jvm, state, vars);
+        user_jvm
+            .chain(jvm)
+            .chain(std::iter::once(self.main_class))
+            .chain(game)
+            .collect()
+    }
+    fn parse_arguments(
+        args: Vec<Argument>,
+        state: &Rule,
+        vars: &HashMap<&'static str, String>,
+    ) -> impl Iterator<Item = String> {
+        args.into_iter().flat_map(|x| x.into_args(state)).map(|s| {
+            vars.iter()
+                .fold(s, |s, (k, v)| s.replace(&format!("${{{k}}}"), v))
+        })
+    }
 }
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -59,7 +99,7 @@ pub struct VersionInfo {
 pub struct PartialVersionInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Arguments passed to the game or JVM
-    pub arguments: Option<HashMap<ArgumentType, Vec<Argument>>>,
+    pub arguments: HashMap<ArgumentType, Vec<Argument>>,
     /// The version ID of the version
     pub id: String,
     /// Libraries that the version depends on
