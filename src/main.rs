@@ -84,9 +84,13 @@ async fn read_combined_version(parrent: Option<VersionInfo>) -> Result<Option<Ve
         Result::Err(e) => Err(e.either(Error::from, Error::from)),
     }
 }
-async fn child_classpath(client: &Client, version_info: &VersionInfo) -> Result<String, Error> {
+async fn child_classpath(
+    client: &Client,
+    version_info: &VersionInfo,
+    state: &Rule,
+) -> Result<String, Error> {
     let mut exist_checks = tokio::task::JoinSet::new();
-    let library_downloads = version_info.child_libraries.iter().map(|i| {
+    let library_downloads = version_info.child_libraries(state).map(|i| {
         let download = &i.downloads.artifact;
         (
             download.size,
@@ -115,14 +119,17 @@ async fn child_classpath(client: &Client, version_info: &VersionInfo) -> Result<
     }
 
     let cp = version_info
-        .child_libraries
-        .iter()
+        .child_libraries(state)
         .map(|x| format!("libraries/{}", x.downloads.artifact.path))
         .collect::<Vec<_>>()
         .join(":");
     Ok(cp)
 }
-async fn classpath(client: &Client, version_info: &VersionInfo) -> Result<String, Error> {
+async fn classpath(
+    client: &Client,
+    version_info: &VersionInfo,
+    state: &Rule,
+) -> Result<String, Error> {
     let asset_index = load_asset_index(client, &version_info.asset_index).await?;
 
     let mut exist_checks = tokio::task::JoinSet::new();
@@ -134,18 +141,25 @@ async fn classpath(client: &Client, version_info: &VersionInfo) -> Result<String
             format!("{INSTANCE}/assets/objects/{folder}"),
         )
     });
-    let library_downloads = version_info
-        .libraries
-        .iter()
-        .chain(&version_info.child_libraries)
-        .map(|i| {
-            let download = &i.downloads.artifact;
-            (
-                download.size,
-                download.url.clone(),
-                format!("{INSTANCE}/libraries/{}", download.path),
-            )
-        });
+    let library_downloads = version_info.libraries(state).map(|i| {
+        let download = &i.downloads.artifact;
+        assert!(i.downloadable, "!downloadable: {}", download.path);
+        assert!(
+            i.include_in_classpath,
+            "!include_in_classpath: {}",
+            download.path
+        );
+        assert!(
+            i.downloads.classifiers.is_none(),
+            "classifier: {}",
+            download.path
+        );
+        (
+            download.size,
+            download.url.clone(),
+            format!("{INSTANCE}/libraries/{}", download.path),
+        )
+    });
     for x in asset_downloads.chain(library_downloads) {
         exist_checks
             .spawn(async move { tokio::fs::try_exists(&x.2).await.map(|e| (!e).then_some(x)) });
@@ -167,9 +181,7 @@ async fn classpath(client: &Client, version_info: &VersionInfo) -> Result<String
     }
 
     let cp = version_info
-        .libraries
-        .iter()
-        .chain(&version_info.child_libraries)
+        .libraries(state)
         .map(|x| format!("libraries/{}", x.downloads.artifact.path))
         .collect::<Vec<_>>()
         .join(":");
@@ -225,7 +237,7 @@ async fn main() {
         let client = reqwest::ClientBuilder::new().build()?;
         let (classpath, version_info) =
             if let Some(version_info) = read_combined_version(None).await? {
-                let classpath = classpath(&client, &version_info).await?;
+                let classpath = classpath(&client, &version_info, &state).await?;
                 (classpath, version_info)
             } else {
                 let ((mut classpath, version_info), ()) = tokio::try_join!(
@@ -238,7 +250,7 @@ async fn main() {
                             .find(|x| x.id == MC_VERSION)
                             .unwrap();
                         let version_info = load_data::<VersionInfo>(&client, &version.url).await?;
-                        let mut classpath = classpath(&client, &version_info).await?;
+                        let mut classpath = classpath(&client, &version_info, &state).await?;
                         classpath.push(':');
                         Ok((classpath, version_info))
                     },
@@ -248,7 +260,7 @@ async fn main() {
                 let version_info = read_combined_version(Some(version_info))
                     .await?
                     .ok_or_else(|| Error::msg("Neoforge failed to install properly"))?;
-                classpath.push_str(&child_classpath(&client, &version_info).await?);
+                classpath.push_str(&child_classpath(&client, &version_info, &state).await?);
                 (classpath, version_info)
             };
         let args = format_arguments(version_info, classpath, &state).await?;
@@ -280,15 +292,3 @@ async fn main() {
     .await
     .unwrap();
 }
-
-// read version files
-// |         |
-// |      not there
-// |   |               |
-// |   install vanilla install neoforge
-// |   |               |
-// |   |               install neoforge libs
-// |   |               |
-// |    merge libraries
-// |   |
-// launch

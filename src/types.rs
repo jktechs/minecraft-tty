@@ -56,6 +56,17 @@ pub struct VersionInfo {
     pub child_libraries: Vec<Library>,
 }
 impl VersionInfo {
+    pub fn libraries<'a>(&'a self, state: &'a Rule) -> impl Iterator<Item = &'a Library> + 'a {
+        state.filter(self.libraries.iter().chain(&self.child_libraries), |l| {
+            l.rules.as_deref().unwrap_or(&[])
+        })
+    }
+    pub fn child_libraries<'a>(
+        &'a self,
+        state: &'a Rule,
+    ) -> impl Iterator<Item = &'a Library> + 'a {
+        state.filter(&self.child_libraries, |l| l.rules.as_deref().unwrap_or(&[]))
+    }
     pub fn merge(mut self, child: PartialVersionInfo) -> Self {
         self.main_class = child.main_class;
         self.type_ = child.type_;
@@ -87,10 +98,13 @@ impl VersionInfo {
         state: &Rule,
         vars: &HashMap<&'static str, String>,
     ) -> impl Iterator<Item = String> {
-        args.into_iter().flat_map(|x| x.into_args(state)).map(|s| {
-            vars.iter()
-                .fold(s, |s, (k, v)| s.replace(&format!("${{{k}}}"), v))
-        })
+        state
+            .filter(args, Argument::rules)
+            .flat_map(Argument::into_arguments)
+            .map(|s| {
+                vars.iter()
+                    .fold(s, |s, (k, v)| s.replace(&format!("${{{k}}}"), v))
+            })
     }
 }
 #[derive(Deserialize, Debug)]
@@ -199,20 +213,27 @@ pub enum Argument {
     },
 }
 impl Argument {
-    pub fn into_args(self, state: &Rule) -> Vec<String> {
+    pub fn rules(&self) -> &[Rule] {
+        if let Argument::Ruled {
+            rules: Some(rules), ..
+        } = self
+        {
+            rules
+        } else {
+            &[]
+        }
+    }
+    pub fn into_arguments(self) -> Vec<String> {
         match self {
-            Argument::Ruled { rules, value }
-                if rules
-                    .as_ref()
-                    .is_none_or(|r| r.iter().any(|r| r.valid_with_state(state))) =>
-            {
-                match value {
-                    ArgumentValue::Single(s) => vec![s],
-                    ArgumentValue::Many(s) => s,
-                }
-            }
-            Argument::Normal(s) => vec![s],
-            Argument::Ruled { .. } => Vec::new(),
+            Self::Normal(s)
+            | Self::Ruled {
+                value: ArgumentValue::Single(s),
+                ..
+            } => vec![s],
+            Self::Ruled {
+                value: ArgumentValue::Many(s),
+                ..
+            } => s,
         }
     }
 }
@@ -249,6 +270,19 @@ impl Rule {
                 .as_ref()
                 .zip(state.features.as_ref())
                 .is_none_or(|(a, b)| a.valid_with_state(b))
+    }
+    pub fn filter<'a, T, I: IntoIterator<Item = T>, F: (FnMut(&T) -> &[Rule]) + 'a>(
+        &'a self,
+        iter: I,
+        mut key: F,
+    ) -> impl Iterator<Item = T> + 'a
+    where
+        I::IntoIter: 'a,
+    {
+        iter.into_iter().filter(move |x| {
+            let key = key(x);
+            key.is_empty() || key.iter().any(|x| x.valid_with_state(self))
+        })
     }
 }
 
