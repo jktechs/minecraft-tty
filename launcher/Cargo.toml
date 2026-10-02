@@ -1,0 +1,25 @@
+[package]
+name = "launcher"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+
+[[bin]]
+name = "async"
+path = "src/async.rs"
+
+[[bin]]
+name = "sync"
+path = "src/sync.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "*"
+reqwest = { version = "*", features = ["stream", "json"] }
+tokio = { version = "*", features = ["full"] }
+tokio-util = { version = "*", features = ["io"] }
+anyhow = "*"
+futures-util = "*"
+chrono = { version = "*", features = ["serde"] }
+either = "*"

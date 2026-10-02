@@ -11,8 +11,6 @@ use tokio::io::AsyncWriteExt;
 
 use crate::types::{AssetIndex, AssetsIndex};
 
-pub const MC_VERSION: &str = "26.3";
-pub const NF_VERSION: &str = "26.3.0.7-beta";
 pub const ASSETS_URL: &str = "https://resources.download.minecraft.net/";
 pub const VERSION_MANIFEST_URL: &str =
     "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";

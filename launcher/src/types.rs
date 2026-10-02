@@ -1,4 +1,4 @@
-use std::{assert_matches, collections::HashMap};
+use std::{assert_matches, borrow::Cow, collections::HashMap};
 
 use serde::Deserialize;
 
@@ -77,7 +77,11 @@ impl VersionInfo {
         self.id = child.id;
         self
     }
-    pub fn arguments(mut self, state: &Rule, vars: &HashMap<&'static str, String>) -> Vec<String> {
+    pub fn arguments(
+        mut self,
+        state: &Rule,
+        vars: &HashMap<&'static str, Cow<str>>,
+    ) -> Vec<String> {
         let jvm = self.arguments.remove(&ArgumentType::Jvm).unwrap();
         let game = self.arguments.remove(&ArgumentType::Game).unwrap();
         let user_jvm = self
@@ -96,7 +100,7 @@ impl VersionInfo {
     fn parse_arguments(
         args: Vec<Argument>,
         state: &Rule,
-        vars: &HashMap<&'static str, String>,
+        vars: &HashMap<&'static str, Cow<str>>,
     ) -> impl Iterator<Item = String> {
         state
             .filter(args, Argument::rules)
