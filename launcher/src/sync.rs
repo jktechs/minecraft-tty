@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use launcher::{
     run_sync,
     types::{FeatureRule, Os, OsRule, Rule, RuleAction},
@@ -21,9 +23,9 @@ fn main() {
         }),
     };
     pub const MC_VERSION: &str = "26.3";
-    pub const NF_VERSION: &str = "26.3.0.7-beta";
+    pub const NF_VERSION: &str = "26.3.0.41-beta";
 
-    let output = run_sync(state, MC_VERSION.into(), NF_VERSION.into())
+    let output = run_sync(state, MC_VERSION.into(), NF_VERSION.into(), HashMap::new())
         .unwrap()
         .output()
         .unwrap();

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, io::ErrorKind, process::Stdio};
+use std::{borrow::Cow, collections::HashMap, io::ErrorKind};
 
 use anyhow::{Error, Ok};
 use either::Either;
@@ -32,18 +32,15 @@ async fn run_neoforge_install(client: &Client, nf_version: &str) -> Result<(), E
         .send()
         .await?
         .content_length()
-        .unwrap();
+        .ok_or_else(|| Error::msg("No way to confirm neoforge installer jar size."))?;
     let installer_path = format!("{INSTANCE}/install.jar");
     let get_jar = download_file(client, &installer_url, &installer_path, size);
     tokio::try_join!(make_profiles, get_jar)?;
     let output = tokio::process::Command::new("java")
         .args(["-jar", "install.jar", "--installClient", "."])
         .current_dir(INSTANCE)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .output()
-        .await
-        .unwrap();
+        .await?;
     if !output.status.success() {
         let err = &*output.stderr;
         let err = String::from_utf8_lossy(err);
@@ -94,6 +91,17 @@ async fn child_classpath(
     let mut exist_checks = tokio::task::JoinSet::new();
     let library_downloads = version_info.child_libraries(state).map(|i| {
         let download = &i.downloads.artifact;
+        assert!(i.downloadable, "!downloadable: {}", download.path);
+        assert!(
+            i.include_in_classpath,
+            "!include_in_classpath: {}",
+            download.path
+        );
+        assert!(
+            i.downloads.classifiers.is_none(),
+            "classifier: {}",
+            download.path
+        );
         (
             download.size,
             download.url.clone(),
@@ -102,7 +110,7 @@ async fn child_classpath(
     });
     for x in library_downloads {
         exist_checks
-            .spawn(async move { tokio::fs::try_exists(&x.2).await.map(|e| e.then_some(x)) });
+            .spawn(async move { tokio::fs::try_exists(&x.2).await.map(|e| (!e).then_some(x)) });
     }
     let mut downloads = Vec::new();
     while let Some(x) = exist_checks.join_next().await {
@@ -190,14 +198,15 @@ async fn classpath(
 
     Ok(cp)
 }
-async fn format_arguments(
+async fn format_arguments<'a>(
     mut version_info: VersionInfo,
-    classpath: &str,
+    classpath: &'a str,
     state: &Rule,
-    mc_version: &str,
+    mc_version: &'a str,
+    extra_vars: &'a HashMap<&'static str, Cow<'a, str>>,
 ) -> Result<Vec<String>, Error> {
     let asset_index = std::mem::take(&mut version_info.asset_index.id);
-    let vars = HashMap::<&str, Cow<str>>::from([
+    let mut vars = HashMap::<&'static str, Cow<str>>::from([
         ("game_directory", ".".into()),
         ("assets_root", "assets".into()),
         ("assets_index_name", asset_index.into()),
@@ -214,13 +223,16 @@ async fn format_arguments(
         ("auth_xuid", "".into()),
         ("version_type", "".into()),
     ]);
-    Ok(version_info.arguments(state, &vars))
+    vars.extend(extra_vars.iter().map(|(k, v)| (*k, v.clone())));
+    let args = version_info.arguments(state, &vars);
+    Ok(args)
 }
 
-pub async fn run_async(
+pub async fn run_async<'a>(
     state: &Rule,
-    mc_version: &str,
-    nf_version: &str,
+    mc_version: &'a str,
+    nf_version: &'a str,
+    extra_vars: &'a HashMap<&'static str, Cow<'a, str>>,
 ) -> Result<tokio::process::Command, Error> {
     let client = reqwest::ClientBuilder::new().build()?;
     let (classpath, version_info) = if let Some(version_info) =
@@ -251,7 +263,7 @@ pub async fn run_async(
         classpath.push_str(&child_classpath(&client, &version_info, state).await?);
         (classpath, version_info)
     };
-    let args = format_arguments(version_info, &classpath, state, mc_version).await?;
+    let args = format_arguments(version_info, &classpath, state, mc_version, extra_vars).await?;
 
     let mut command = Command::new("java");
     command.args(args).current_dir(INSTANCE);
@@ -261,13 +273,17 @@ pub fn run_sync(
     state: Rule,
     mc_version: String,
     nf_version: String,
+    extra_vars: HashMap<&'static str, Cow<'static, str>>,
 ) -> Result<std::process::Command, Error> {
     match std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .expect("Failed building the Runtime")
-            .block_on(run_async(&state, &mc_version, &nf_version).map(|e| e.map(|c| c.into_std())))
+            .block_on(
+                run_async(&state, &mc_version, &nf_version, &extra_vars)
+                    .map(|e| e.map(|c| c.into_std())),
+            )
     })
     .join()
     {

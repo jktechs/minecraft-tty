@@ -7,7 +7,7 @@ use anyhow::{Error, Ok};
 use either::Either;
 use futures_util::StreamExt;
 use reqwest::Client;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::types::{AssetIndex, AssetsIndex};
 
@@ -65,6 +65,17 @@ pub async fn load_asset_index(client: &Client, asset: &AssetIndex) -> Result<Ass
     path.push("assets/indexes");
     tokio::fs::create_dir_all(&path).await?;
     path.push(format!("{}.json", asset.id));
+
+    if tokio::fs::try_exists(&path).await? {
+        let mut bytes = Vec::new();
+        tokio::fs::File::open(path)
+            .await?
+            .read_to_end(&mut bytes)
+            .await?;
+        let asset_index = serde_json::from_slice::<AssetsIndex>(&bytes)?;
+        return Ok(asset_index);
+    }
+
     let (bytes, mut file) = tokio::try_join!(
         async { Ok(client.get(&asset.url).send().await?.bytes().await?) },
         async {

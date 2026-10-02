@@ -5,6 +5,7 @@ use smithay::{
         buffer::BufferHandler,
         compositor::{CompositorClientState, CompositorHandler, CompositorState},
         output::OutputHandler,
+        seat::WaylandFocus,
         shm::ShmHandler,
     },
 };
@@ -24,6 +25,14 @@ impl CompositorHandler for App {
         self.redraw.ping();
         if let Some(window) = self.surface.as_mut() {
             window.on_commit();
+        }
+    }
+    fn destroyed(&mut self, surface: &WlSurface) {
+        if let Some(window) = self.surface.as_ref()
+            && let Some(current_surface) = window.wl_surface()
+            && *surface == *current_surface
+        {
+            self.surface = None;
         }
     }
 }

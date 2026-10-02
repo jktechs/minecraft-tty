@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use calloop::EventLoop;
 
@@ -34,6 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mc_exit_signal = event_loop.get_signal();
 
     std::thread::spawn(move || {
+        let quickplay = std::fs::exists("./instance/saves/New World").unwrap();
         let output = launcher::run_sync(
             Rule {
                 action: RuleAction::Allow,
@@ -43,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     is_demo_user: Some(false),
                     is_quick_play_multiplayer: Some(false),
                     is_quick_play_realms: Some(false),
-                    is_quick_play_singleplayer: Some(false),
+                    is_quick_play_singleplayer: Some(quickplay),
                 }),
                 os: Some(OsRule {
                     arch: Some("x86_64".into()),
@@ -52,7 +53,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }),
             },
             "26.3".into(),
-            "26.3.0.7-beta".into(),
+            "26.3.0.41-beta".into(),
+            HashMap::from([
+                ("quickPlayPath", "./instance".into()),
+                ("quickPlaySingleplayer", "New World".into()),
+            ]),
         )
         .unwrap()
         .env("WAYLAND_DISPLAY", "wayland-5")

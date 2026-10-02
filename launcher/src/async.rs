@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use launcher::{
     run_async,
     types::{FeatureRule, Os, OsRule, Rule, RuleAction},
@@ -22,9 +24,9 @@ async fn main() {
         }),
     };
     pub const MC_VERSION: &str = "26.3";
-    pub const NF_VERSION: &str = "26.3.0.7-beta";
+    pub const NF_VERSION: &str = "26.3.0.41-beta";
 
-    let output = run_async(&state, MC_VERSION, NF_VERSION)
+    let output = run_async(&state, MC_VERSION, NF_VERSION, &HashMap::new())
         .await
         .unwrap()
         .output()

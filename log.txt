@@ -1,0 +1,30 @@
+    Finished `release` profile [optimized] target(s) in 0.22s
+     Running `target/release/compostor`
+started
+libinput error: client bug: timer event11 hold: scheduled expiry is in the past (-226ms), your system is too slow
+libinput error: event3  - AT Translated Set 2 keyboard: client bug: event processing lagging behind by 965ms, your system is too slow
+libinput error: event11 - ELAN0774:00 04F3:3244 Touchpad: client bug: event processing lagging behind by 517ms, your system is too slow
+libinput error: client bug: timer event11 hold: scheduled expiry is in the past (-477ms), your system is too slow
+   Compiling compostor v0.1.0 (/home/jannick/projects/compostor)
+    Finished `release` profile [optimized] target(s) in 4.72s
+     Running `target/release/compostor`
+started
+libinput error: client bug: timer event11 hold: scheduled expiry is in the past (-223ms), your system is too slow
+    Finished `release` profile [optimized] target(s) in 0.17s
+     Running `target/release/compostor`
+started
+   Compiling compostor v0.1.0 (/home/jannick/projects/compostor)
+    Finished `release` profile [optimized] target(s) in 4.83s
+     Running `target/release/compostor`
+started
+second surface
+   Compiling compostor v0.1.0 (/home/jannick/projects/compostor)
+    Finished `release` profile [optimized] target(s) in 5.92s
+     Running `target/release/compostor`
+started
+top level
+destroyed
+destroyed
+top level
+destroyed
+destroyed
