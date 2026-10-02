@@ -249,7 +249,7 @@ impl Backend {
     }
     pub fn input<E: InputBackend>(&mut self, state: &mut App, event: InputEvent<E>) {
         enum Action {
-            Spawn,
+            // Spawn,
             Quit,
             Vt(i32),
         }
@@ -278,25 +278,25 @@ impl Backend {
                         if mods.ctrl && mods.alt && sym == Keysym::BackSpace {
                             return FilterResult::Intercept(Action::Quit);
                         }
-                        if mods.alt && sym == Keysym::F4 {
-                            return FilterResult::Intercept(Action::Spawn);
-                        }
+                        // if mods.alt && sym == Keysym::F4 {
+                        //     return FilterResult::Intercept(Action::Spawn);
+                        // }
                         FilterResult::Forward
                     },
                 ) {
                     Some(Action::Quit) => state.exit(),
-                    Some(Action::Spawn) => {
-                        let mut child = Command::new("sh")
-                            .arg("run.sh")
-                            .current_dir("..")
-                            .stderr(std::process::Stdio::null())
-                            .stdout(std::process::Stdio::null())
-                            .spawn()
-                            .unwrap();
-                        std::thread::spawn(move || {
-                            let _ = child.wait();
-                        });
-                    }
+                    // Some(Action::Spawn) => {
+                    //     let mut child = Command::new("sh")
+                    //         .arg("run.sh")
+                    //         .current_dir("..")
+                    //         .stderr(std::process::Stdio::null())
+                    //         .stdout(std::process::Stdio::null())
+                    //         .spawn()
+                    //         .unwrap();
+                    //     std::thread::spawn(move || {
+                    //         let _ = child.wait();
+                    //     });
+                    // }
                     Some(Action::Vt(n)) => {
                         if let Backend::Udev(k) = self {
                             let _ = k.session.change_vt(n);

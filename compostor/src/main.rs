@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{process::Command, time::Duration};
 
 use calloop::EventLoop;
 
@@ -29,7 +29,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let feedback = {
         if let Backend::Udev(state) = &mut backend {
-            state.bind_wl_display(dh);
             Some(&state.render_feedback)
         } else {
             None
@@ -39,6 +38,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new(dh, request_redraw, feedback)?;
 
     let mut event_loop = EventLoop::<LoopData>::try_new()?;
+
+    let mc_exit_signal = event_loop.get_signal();
+    let mut child = Command::new("sh")
+        .arg("run.sh")
+        .current_dir("..")
+        .stderr(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    std::thread::spawn(move || {
+        let _ = child.wait();
+        mc_exit_signal.stop();
+    });
 
     backend.register_loop(&event_loop)?;
     app.register_loop(&event_loop, &mut display)?;

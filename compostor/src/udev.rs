@@ -223,12 +223,6 @@ impl UdevBackend {
             }
         }
     }
-
-    pub fn bind_wl_display(&mut self, dh: &DisplayHandle) {
-        if let Err(e) = self.renderer.bind_wl_display(dh) {
-            eprintln!("wl_drm bind failed, dmabuf-only: {e}");
-        }
-    }
 }
 impl WindowingBackend for UdevBackend {
     fn new(redraw: PingSource) -> Result<Self, Box<dyn std::error::Error>> {
