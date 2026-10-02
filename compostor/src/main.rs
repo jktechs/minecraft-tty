@@ -5,19 +5,18 @@ use calloop::EventLoop;
 use calloop::ping::make_ping;
 use smithay::{delegate_dmabuf, reexports::wayland_server::Display, wayland::seat::WaylandFocus};
 
-use crate::state::{App, Backend};
+use crate::{state::App, udev::UdevBackend};
 
 mod base;
 mod seat;
 mod state;
 mod udev;
-mod winit;
 mod xdg;
 
 struct LoopData {
     display: Display<App>,
     app: App,
-    backend: Backend,
+    backend: UdevBackend,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,17 +24,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (request_redraw, redraw) = make_ping()?;
     let mut display: Display<App> = Display::new()?;
     let dh = &display.handle();
-    let mut backend = Backend::new(redraw)?;
+    let mut backend = UdevBackend::new(redraw)?;
 
-    let feedback = {
-        if let Backend::Udev(state) = &mut backend {
-            Some(&state.render_feedback)
-        } else {
-            None
-        }
-    };
-
-    let mut app = App::new(dh, request_redraw, feedback)?;
+    let mut app = App::new(dh, request_redraw, Some(&backend.render_feedback))?;
 
     let mut event_loop = EventLoop::<LoopData>::try_new()?;
 
@@ -63,9 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             backend,
         },
         |loop_data| {
-            if let Backend::Udev(state) = &mut loop_data.backend {
-                state.import_pending(&mut loop_data.app);
-            }
+            loop_data.backend.import_pending(&mut loop_data.app);
             loop_data.display.flush_clients().unwrap();
 
             let surface = loop_data.app.surface.as_ref().and_then(|x| x.wl_surface());
@@ -74,8 +63,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 loop_data.app.seat_state.pointer.set_location(position);
             }
-
-            loop_data.backend.cursor(&mut loop_data.app).unwrap();
         },
     )?;
     Ok(())
