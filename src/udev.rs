@@ -239,6 +239,8 @@ impl UdevBackend {
         )?;
         let drm_fd = DrmDeviceFd::new(DeviceFd::from(fd));
         let (mut drm, drm_notifier) = DrmDevice::new(drm_fd.clone(), true)?;
+        // make sure to reset state
+        drm.reset_state()?;
 
         // GBM, EGL, GLES on the same device
         let gbm = GbmDevice::new(drm_fd.clone())?;
