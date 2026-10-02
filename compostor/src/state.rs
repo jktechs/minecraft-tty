@@ -177,7 +177,7 @@ impl App {
 #[derive(Debug)]
 pub struct SeatState {
     pub wayland_seat_state: WaylandSeatState<App>,
-    pub seat: Seat<App>,
+    pub _seat: Seat<App>,
     pub keyboard: KeyboardHandle<App>,
     pub pointer: PointerHandle<App>,
     pub image_status: CursorImageStatus,

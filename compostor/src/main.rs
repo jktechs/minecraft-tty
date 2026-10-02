@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let feedback = {
         if let Backend::Udev(state) = &mut backend {
-            // state.bind_wl_display(dh);
+            state.bind_wl_display(dh);
             Some(&state.render_feedback)
         } else {
             None

@@ -18,12 +18,12 @@ use crate::state::{App, SeatState};
 impl SeatState {
     pub fn new(dh: &DisplayHandle) -> Result<Self, Box<dyn std::error::Error>> {
         let mut wayland_seat_state = WaylandSeatState::new();
-        let mut seat = wayland_seat_state.new_wl_seat(dh, "seat-0");
-        let keyboard = seat.add_keyboard(XkbConfig::default(), 200, 25)?;
-        let pointer = seat.add_pointer();
+        let mut _seat = wayland_seat_state.new_wl_seat(dh, "seat-0");
+        let keyboard = _seat.add_keyboard(XkbConfig::default(), 200, 25)?;
+        let pointer = _seat.add_pointer();
         Ok(Self {
             wayland_seat_state,
-            seat,
+            _seat,
             keyboard,
             pointer,
             position_hint: None,

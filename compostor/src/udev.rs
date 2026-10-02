@@ -26,7 +26,6 @@ use smithay::{
                 surface::{WaylandSurfaceRenderElement, render_elements_from_surface_tree},
             },
             gles::GlesRenderer,
-            utils::with_renderer_surface_state,
         },
         session::{
             Event as SessionEvent, Session,
@@ -201,7 +200,7 @@ pub struct UdevBackend {
     pending: Option<Pending>,
     cursors: CursorCache,
     pub render_feedback: DmabufFeedback,
-    // scanout_feedback: DmabufFeedback,
+    scanout_feedback: DmabufFeedback,
 }
 
 impl std::fmt::Debug for UdevBackend {
@@ -225,11 +224,11 @@ impl UdevBackend {
         }
     }
 
-    //     pub fn bind_wl_display(&mut self, dh: &DisplayHandle) {
-    //         if let Err(e) = self.renderer.bind_wl_display(dh) {
-    //             eprintln!("wl_drm bind failed, dmabuf-only: {e}");
-    //         }
-    //     }
+    pub fn bind_wl_display(&mut self, dh: &DisplayHandle) {
+        if let Err(e) = self.renderer.bind_wl_display(dh) {
+            eprintln!("wl_drm bind failed, dmabuf-only: {e}");
+        }
+    }
 }
 impl WindowingBackend for UdevBackend {
     fn new(redraw: PingSource) -> Result<Self, Box<dyn std::error::Error>> {
@@ -332,13 +331,13 @@ impl WindowingBackend for UdevBackend {
         )?;
 
         let render_feedback = DmabufFeedbackBuilder::new(dev, render_formats.clone()).build()?;
-        // let scanout_feedback = DmabufFeedbackBuilder::new(dev, render_formats)
-        //     .add_preference_tranche(
-        //         dev,
-        //         Some(TrancheFlags::Scanout),
-        //         compositor.surface().plane_info().formats.iter().copied(),
-        //     )
-        //     .build()?;
+        let scanout_feedback = DmabufFeedbackBuilder::new(dev, render_formats)
+            .add_preference_tranche(
+                dev,
+                Some(TrancheFlags::Scanout),
+                compositor.surface().plane_info().formats.iter().copied(),
+            )
+            .build()?;
 
         Ok(Self {
             session,
@@ -357,7 +356,7 @@ impl WindowingBackend for UdevBackend {
             }),
             cursors: CursorCache::new(),
             render_feedback,
-            // scanout_feedback,
+            scanout_feedback,
         })
     }
 
@@ -535,37 +534,25 @@ impl WindowingBackend for UdevBackend {
             });
         }
         if let Some(window) = state.surface.as_ref() {
-            // let wl = window.toplevel().unwrap().wl_surface();
-            // with_renderer_surface_state(wl, |s| {
-            //     eprintln!(
-            //         "buf={:?} surf={:?} scale={:?} geo={:?} mode={:?}",
-            //         s.buffer_size(),
-            //         s.surface_size(),
-            //         s.buffer_scale(),
-            //         window.geometry(),
-            //         self.mode.size,
-            //     );
-            // });
-
             let out = state.output.clone();
             window.send_frame(&state.output, now, None, |_, _| Some(out.clone()));
-            // window.send_dmabuf_feedback(
-            //     &state.output,
-            //     |_, _| Some(out.clone()),
-            //     |surface, _| {
-            //         let zero_copy = states
-            //             .states
-            //             .get(&Id::from_wayland_resource(surface))
-            //             .is_some_and(|s| {
-            //                 s.presentation_state == RenderElementPresentationState::ZeroCopy
-            //             });
-            //         if zero_copy {
-            //             &self.scanout_feedback
-            //         } else {
-            //             &self.render_feedback
-            //         }
-            //     },
-            // );
+            window.send_dmabuf_feedback(
+                &state.output,
+                |_, _| Some(out.clone()),
+                |surface, _| {
+                    let zero_copy = states
+                        .states
+                        .get(&Id::from_wayland_resource(surface))
+                        .is_some_and(|s| {
+                            s.presentation_state == RenderElementPresentationState::ZeroCopy
+                        });
+                    if zero_copy {
+                        &self.scanout_feedback
+                    } else {
+                        &self.render_feedback
+                    }
+                },
+            );
         }
         Ok(())
     }
