@@ -1,0 +1,12 @@
+[package]
+name = "compostor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+smithay = {version = "0.7.0", features = [ "backend_winit", "backend_drm", "backend_gbm", "backend_egl",
+   "backend_libinput", "backend_session_libseat", "backend_udev", "use_system_lib",
+   "renderer_gl", "wayland_frontend", "desktop"] }
+wayland-server = "*"
+calloop = "0.14.4"
+xcursor = "0.3"
